@@ -16,7 +16,7 @@ export async function POST(req) {
     },
     body: JSON.stringify({
       input: {
-        prompt: "Make this a 90s cartoon",
+        prompt: "Make this a zibri studio style",
         input_image: image
       }
     })
@@ -34,6 +34,7 @@ export async function POST(req) {
   console.log('Replicate cartoon image URL:', styledImageUrl);
 
   // 2. 스타일링된 이미지 가져와서 Base64 인코딩
+  // const cartoonImageRes = await fetch(image);
   const cartoonImageRes = await fetch(styledImageUrl);
   const cartoonImageBuffer = await cartoonImageRes.arrayBuffer();
   const imageBase64 = Buffer.from(cartoonImageBuffer).toString("base64");

@@ -46,12 +46,13 @@ export default function UploadFantasyPhoto() {
       });
 
       
-      console.log('Replicate response:', replicateRes);
+      console.log('Replicate response:', replicateRes.data['glbUrl']);
       setResultImage(replicateRes.data['image']);
       // setResultImage(outputImage);
   
       // Step 4: Placeholder 3D model load (replace with your real ReadyPlayerMe URL)
-      const readyPlayerMeUrl = 'https://models.readyplayer.me/YOUR_AVATAR_ID.glb';
+      const readyPlayerMeUrl = replicateRes.data['glbUrl'];
+      // const readyPlayerMeUrl = 'https://models.readyplayer.me/YOUR_AVATAR_ID.glb';
       setModelUrl(readyPlayerMeUrl);
     } catch (err) {
       console.error('Error during upload or processing:', err);
@@ -63,34 +64,97 @@ export default function UploadFantasyPhoto() {
   
   
 
+  // useEffect(() => {
+  //   if (!modelUrl) return;
+
+  //   console.log('Loading 3D model from URL:', modelUrl);
+  //   const scene = new THREE.Scene();
+  //   const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+  //   const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('threeCanvas') });
+  //   renderer.setSize(600, 400);
+
+  //   const light = new THREE.HemisphereLight(0xffffff, 0x444444);
+  //   light.position.set(0, 20, 0);
+  //   scene.add(light);
+
+  //   const loader = new GLTFLoader();
+  //   loader.load(modelUrl, (gltf) => {
+  //     const model = gltf.scene;
+  //     scene.add(model);
+  //     camera.position.z = 2;
+
+  //     function animate() {
+  //       requestAnimationFrame(animate);
+  //       model.rotation.y += 0.01;
+  //       renderer.render(scene, camera);
+  //     }
+
+  //     animate();
+  //   });
+  // }, [modelUrl]);
+
+
   useEffect(() => {
     if (!modelUrl) return;
-
+  
+    console.log('Loading 3D model from URL:', modelUrl);
+    const canvas = document.getElementById('threeCanvas');
     const scene = new THREE.Scene();
+  
     const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('threeCanvas') });
+    camera.position.set(0, 1.5, 2); // 좀 더 위에서 바라보게
+  
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     renderer.setSize(600, 400);
-
-    const light = new THREE.HemisphereLight(0xffffff, 0x444444);
-    light.position.set(0, 20, 0);
-    scene.add(light);
-
+    renderer.setClearColor(0xf0f0f0); // 밝은 배경색
+    renderer.shadowMap.enabled = true;
+  
+    // 조명: 상단 부드러운 빛 + 방향 빛
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.2);
+    hemiLight.position.set(0, 20, 0);
+    scene.add(hemiLight);
+  
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(3, 10, 10);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
+  
+    // 바닥면
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(10, 10),
+      // new THREE.ShadowMaterial({ opacity: 0.2 })
+      new THREE.MeshStandardMaterial({ color: 0xf0f0f0 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -1.2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+  
     const loader = new GLTFLoader();
     loader.load(modelUrl, (gltf) => {
       const model = gltf.scene;
+      model.position.y = -1; // 모델 내려서 잘 보이게
+      model.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+  
       scene.add(model);
-      camera.position.z = 2;
-
+      camera.lookAt(0, 0.5, 0); // 시선 중심 약간 아래
+  
       function animate() {
         requestAnimationFrame(animate);
         model.rotation.y += 0.01;
         renderer.render(scene, camera);
       }
-
+  
       animate();
     });
   }, [modelUrl]);
 
+  
   return (
     <div className="min-h-screen bg-zinc-950 text-white px-6 py-12">
       <div className="max-w-3xl mx-auto">
