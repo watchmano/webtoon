@@ -27,24 +27,26 @@ export default function UploadFantasyPhoto() {
   
     try {
       // Step 1: Upload original photo to Cloudinary
-      // const formData = new FormData();
-      // formData.append('file', file);
-      // formData.append('upload_preset', 'ml_default');
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', 'ml_default');
   
       // const uploadRes = await axios.post('https://api.cloudinary.com/v1_1/dcbzon77z/image/upload', formData);
+      // console.log('Cloudinary upload response:', uploadRes);
       // const imageUrl = uploadRes.data.secure_url;
       // console.log('Uploaded image URL:', imageUrl);
-  
+      // const resizedUrl = `https://res.cloudinary.com/dcbzon77z/image/upload/w_512,h_512,c_limit/${uploadRes.data.public_id}.jpg`;
+
+      // console.log('Resized image URL:', resizedUrl);
       // Step 2: Request AI style conversion via Replicate (proxy to /api/replicate)
       const replicateRes = await axios.post('/api/replicate', {
-        image: "https://res.cloudinary.com/dcbzon77z/image/upload/v1748761671/KakaoTalk_Photo_2025-06-01-15-09-33_zbimaj.jpg",
+        // image: "https://res.cloudinary.com/dcbzon77z/image/upload/w_512,h_512,c_limit/KakaoTalk_Photo_2025-06-01-15-09-33_jwxyvm.jpg",
+        image: 'https://res.cloudinary.com/dcbzon77z/image/upload/v1748848753/KakaoTalk_Photo_2025-06-01-15-09-33_zoen9l.jpg',
+        // image: imageUrl,
       });
 
       
       console.log('Replicate response:', replicateRes);
-      console.log('outputImage:', replicateRes.data.imgae);
-      const {image} = replicateRes.data;
-      console.log('image:', replicateRes.data['image']);
       setResultImage(replicateRes.data['image']);
       // setResultImage(outputImage);
   
