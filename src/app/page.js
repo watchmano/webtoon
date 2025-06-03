@@ -31,29 +31,34 @@ export default function UploadFantasyPhoto() {
       formData.append('file', file);
       formData.append('upload_preset', 'ml_default');
   
-      // const uploadRes = await axios.post('https://api.cloudinary.com/v1_1/dcbzon77z/image/upload', formData);
-      // console.log('Cloudinary upload response:', uploadRes);
-      // const imageUrl = uploadRes.data.secure_url;
-      // console.log('Uploaded image URL:', imageUrl);
-      // const resizedUrl = `https://res.cloudinary.com/dcbzon77z/image/upload/w_512,h_512,c_limit/${uploadRes.data.public_id}.jpg`;
+      const uploadRes = await axios.post('https://api.cloudinary.com/v1_1/dcbzon77z/image/upload', formData);
+      
+      const imageUrl = uploadRes.data.secure_url;
+      console.log('Uploaded image URL:', imageUrl);
+      const resizedUrl = `https://res.cloudinary.com/dcbzon77z/image/upload/w_512,h_512,c_limit/${uploadRes.data.public_id}.jpg`;
 
-      // console.log('Resized image URL:', resizedUrl);
+      console.log('Resized image URL:', resizedUrl);
       // Step 2: Request AI style conversion via Replicate (proxy to /api/replicate)
       const replicateRes = await axios.post('/api/replicate', {
+        image: imageUrl,
         // image: "https://res.cloudinary.com/dcbzon77z/image/upload/w_512,h_512,c_limit/KakaoTalk_Photo_2025-06-01-15-09-33_jwxyvm.jpg",
-        image: 'https://res.cloudinary.com/dcbzon77z/image/upload/v1748848753/KakaoTalk_Photo_2025-06-01-15-09-33_zoen9l.jpg',
-        // image: imageUrl,
+        // image: 'https://replicate.delivery/xezq/hVMZkPwu6mLZNlBmej4AIlNb8tuLUGxO2cjf0YGNoNfFZ9lpA/tmp3h764t9a.png',
       });
 
       
-      console.log('Replicate response:', replicateRes.data['glbUrl']);
+      // console.log('Replicate response:', replicateRes.data['glbUrl']);
       setResultImage(replicateRes.data['image']);
       // setResultImage(outputImage);
   
       // Step 4: Placeholder 3D model load (replace with your real ReadyPlayerMe URL)
+      // const readyPlayerMeUrl = replicateRes.data['glbUrl'];
+      // setModelUrl(readyPlayerMeUrl);
+
       const readyPlayerMeUrl = replicateRes.data['glbUrl'];
-      // const readyPlayerMeUrl = 'https://models.readyplayer.me/YOUR_AVATAR_ID.glb';
-      setModelUrl(readyPlayerMeUrl);
+      const proxyUrl = `/api/meshygltf?url=${encodeURIComponent(readyPlayerMeUrl)}`;
+      setModelUrl(proxyUrl);
+
+
     } catch (err) {
       console.error('Error during upload or processing:', err);
       alert('Something went wrong. Check console for details.');
@@ -63,37 +68,6 @@ export default function UploadFantasyPhoto() {
   };
   
   
-
-  // useEffect(() => {
-  //   if (!modelUrl) return;
-
-  //   console.log('Loading 3D model from URL:', modelUrl);
-  //   const scene = new THREE.Scene();
-  //   const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
-  //   const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('threeCanvas') });
-  //   renderer.setSize(600, 400);
-
-  //   const light = new THREE.HemisphereLight(0xffffff, 0x444444);
-  //   light.position.set(0, 20, 0);
-  //   scene.add(light);
-
-  //   const loader = new GLTFLoader();
-  //   loader.load(modelUrl, (gltf) => {
-  //     const model = gltf.scene;
-  //     scene.add(model);
-  //     camera.position.z = 2;
-
-  //     function animate() {
-  //       requestAnimationFrame(animate);
-  //       model.rotation.y += 0.01;
-  //       renderer.render(scene, camera);
-  //     }
-
-  //     animate();
-  //   });
-  // }, [modelUrl]);
-
-
   useEffect(() => {
     if (!modelUrl) return;
   
@@ -102,14 +76,14 @@ export default function UploadFantasyPhoto() {
     const scene = new THREE.Scene();
   
     const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
-    camera.position.set(0, 1.5, 2); // 좀 더 위에서 바라보게
+    camera.position.set(0, 0, 3.5);  // 👈 낮고 가까움
+    camera.lookAt(0, 0.1, 0);          // 👈 완전 정면
   
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     renderer.setSize(600, 400);
-    renderer.setClearColor(0xf0f0f0); // 밝은 배경색
+    renderer.setClearColor(0xf0f0f0);
     renderer.shadowMap.enabled = true;
   
-    // 조명: 상단 부드러운 빛 + 방향 빛
     const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.2);
     hemiLight.position.set(0, 20, 0);
     scene.add(hemiLight);
@@ -119,10 +93,8 @@ export default function UploadFantasyPhoto() {
     dirLight.castShadow = true;
     scene.add(dirLight);
   
-    // 바닥면
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(10, 10),
-      // new THREE.ShadowMaterial({ opacity: 0.2 })
       new THREE.MeshStandardMaterial({ color: 0xf0f0f0 })
     );
     ground.rotation.x = -Math.PI / 2;
@@ -133,7 +105,7 @@ export default function UploadFantasyPhoto() {
     const loader = new GLTFLoader();
     loader.load(modelUrl, (gltf) => {
       const model = gltf.scene;
-      model.position.y = -1; // 모델 내려서 잘 보이게
+      model.position.y = -1;
       model.traverse((child) => {
         if (child.isMesh) {
           child.castShadow = true;
@@ -142,7 +114,6 @@ export default function UploadFantasyPhoto() {
       });
   
       scene.add(model);
-      camera.lookAt(0, 0.5, 0); // 시선 중심 약간 아래
   
       function animate() {
         requestAnimationFrame(animate);
@@ -153,7 +124,7 @@ export default function UploadFantasyPhoto() {
       animate();
     });
   }, [modelUrl]);
-
+  
   
   return (
     <div className="min-h-screen bg-zinc-950 text-white px-6 py-12">
