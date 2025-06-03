@@ -11,43 +11,72 @@ export async function POST(req) {
   const { image } = body;
   console.log('✅ 입력 이미지 URL:', image);
 
-  // 1. Replicate로 이미지 변환 요청
-  const response = await fetch('https://api.replicate.com/v1/models/black-forest-labs/flux-kontext-pro/predictions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.REPLICATE_API_TOKEN}`,
-      
-      'Content-Type': 'application/json',
-      'Prefer': 'wait'
-    },
-    body: JSON.stringify({
-      input: {
-        prompt: "Make this a full body cartoon style cat standing upright, plain background, high color contrast",
-        input_image: image
+  // 0. remove.bg로 배경 제거
+  let removedBgImageBase64 = "";
+  try {
+    const removeBgRes = await axios.post(
+      "https://api.remove.bg/v1.0/removebg",
+      {
+        image_url: image,
+        size: "auto"
+      },
+      {
+        headers: {
+          "X-Api-Key": process.env.REMOVE_BG_API_KEY
+        },
+        responseType: "arraybuffer"
       }
-    })
-  });
+    );
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('❌ Replicate 실패:', response.status, errorText);
-    return new Response(errorText, { status: response.status });
+    const buffer = Buffer.from(removeBgRes.data);
+    removedBgImageBase64 = buffer.toString("base64");
+    console.log("🧼 remove.bg 처리 완료");
+  } catch (error) {
+    console.error("❌ remove.bg 실패:", error.response?.data || error.message);
+    return new Response("remove.bg failed", { status: 500 });
   }
 
-  const result = await response.json();
-  const styledImageUrl = result.output;
-  // const styledImageUrl = image;
-  console.log('🎨 카툰화된 이미지 URL:', styledImageUrl);
+  // 1. Replicate로 카툰 스타일 변환 요청
+  let styledImageUrl = "";
+  try {
+    const response = await fetch('https://api.replicate.com/v1/models/black-forest-labs/flux-kontext-pro/predictions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.REPLICATE_API_TOKEN}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'wait'
+      },
+      body: JSON.stringify({
+        input: {
+          prompt: "A full-body cartoon illustration of in studio jibri and Pixar style, front-facing, clean silhouette, flat colors, simplified clothes, natural lighting, no background, high contrast",
+          input_image: `data:image/png;base64,${removedBgImageBase64}`
+        }
+      })
+    });
 
-  // 2. 스타일링된 이미지 → base64 인코딩
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Replicate 실패:', response.status, errorText);
+      return new Response(errorText, { status: response.status });
+    }
+
+    const result = await response.json();
+    styledImageUrl = result.output;
+    console.log('🎨 카툰화된 이미지 URL:', styledImageUrl);
+  } catch (err) {
+    console.error('❌ Replicate 호출 실패:', err.message);
+    return new Response("Replicate failed", { status: 500 });
+  }
+
+  // 2. 카툰 이미지 → base64 인코딩
   const cartoonImageRes = await fetch(styledImageUrl);
   const cartoonImageBuffer = await cartoonImageRes.arrayBuffer();
   const imageBase64 = Buffer.from(cartoonImageBuffer).toString("base64");
 
-  // 3. Meshy에 3D 모델 생성 요청
+  // 3. Meshy로 3D 모델 생성 요청
   const meshyHeaders = {
-    // Authorization: `Bearer ${process.env.MESHY_API_KEY}`,
-    Authorization: `Bearer ${process.env.MESHY_API_KEY_DUMMY}`,
+    // Authorization: `Bearer ${process.env.MESHY_API_KEY_DUMMY}`,
+    Authorization: `Bearer ${process.env.MESHY_API_KEY}`,
     "Content-Type": "application/json"
   };
 
@@ -57,11 +86,13 @@ export async function POST(req) {
       'https://api.meshy.ai/openapi/v1/image-to-3d',
       {
         image_url: `data:image/png;base64,${imageBase64}`,
-        enable_pbr: true,
         should_remesh: true,
         should_texture: true,
-        ai_model: 'meshy-4',  // PBR 사용을 위해 반드시 meshy-4
-        topology: 'triangle'
+        enable_pbr: true, // ✅ 추가: 물리 기반 텍스처 사용
+        ai_model: 'meshy-4',
+        topology: 'quad',
+        target_polycount: 300000,
+        texture_prompt: "Pixar-style cartoon kid, smooth simple color clothes, clean face and eyes, natural skin tone, clear body parts, vibrant color separation"
       },
       { headers: meshyHeaders }
     );
@@ -73,7 +104,7 @@ export async function POST(req) {
     return new Response("Failed to start Meshy task", { status: 500 });
   }
 
-  // 4. Meshy 작업 완료될 때까지 대기
+  // 4. Meshy 작업 완료 대기
   let modelUrl;
   try {
     while (true) {
@@ -84,7 +115,6 @@ export async function POST(req) {
 
       const { status, model_urls, progress } = statusRes.data;
       console.log(`⌛ Meshy 상태: ${status} (${progress}%)`);
-      
 
       if (status === 'SUCCEEDED') {
         modelUrl = model_urls.glb;
@@ -106,7 +136,6 @@ export async function POST(req) {
   // 5. 최종 응답
   return Response.json({
     glbUrl: modelUrl,
-    styledImage: styledImageUrl,
-    image: styledImageUrl
+    styledImage: styledImageUrl
   });
 }

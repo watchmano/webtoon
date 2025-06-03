@@ -26,7 +26,7 @@ export default function UploadFantasyPhoto() {
     setLoading(true);
   
     try {
-      // Step 1: Upload original photo to Cloudinary
+      
       const formData = new FormData();
       formData.append('file', file);
       formData.append('upload_preset', 'ml_default');
@@ -38,22 +38,16 @@ export default function UploadFantasyPhoto() {
       const resizedUrl = `https://res.cloudinary.com/dcbzon77z/image/upload/w_512,h_512,c_limit/${uploadRes.data.public_id}.jpg`;
 
       console.log('Resized image URL:', resizedUrl);
-      // Step 2: Request AI style conversion via Replicate (proxy to /api/replicate)
+      
       const replicateRes = await axios.post('/api/replicate', {
         image: imageUrl,
-        // image: "https://res.cloudinary.com/dcbzon77z/image/upload/w_512,h_512,c_limit/KakaoTalk_Photo_2025-06-01-15-09-33_jwxyvm.jpg",
-        // image: 'https://replicate.delivery/xezq/hVMZkPwu6mLZNlBmej4AIlNb8tuLUGxO2cjf0YGNoNfFZ9lpA/tmp3h764t9a.png',
       });
 
       
-      // console.log('Replicate response:', replicateRes.data['glbUrl']);
-      setResultImage(replicateRes.data['image']);
-      // setResultImage(outputImage);
-  
-      // Step 4: Placeholder 3D model load (replace with your real ReadyPlayerMe URL)
-      // const readyPlayerMeUrl = replicateRes.data['glbUrl'];
-      // setModelUrl(readyPlayerMeUrl);
-
+      
+      setResultImage(replicateRes.data['styledImage']);
+      
+      // const readyPlayerMeUrl = 'https://assets.meshy.ai/94d12768-c46a-44d9-b02b-314ae592b5f5/tasks/0197337f-4480-7e0e-a2b4-6f6c01185d2a/output/model.glb?Expires=1749175195&Signature=QlzPbPy~gNex3DWIIxOcAY97Ak8cb0ar2thaU-mRXNf1uPZPZ6JRRfPRqoLfWSHB2vsgzfDxc6-uIiwXg7IRm0c3xUtqFq8HYJGlMBwcll2Rww79Jh8866DNGESdKlZ93ILnfXcSc7dwwiaocrJMNBdKYDhL4cYlFfnpsHNYuLrKBXANSVKHG11U~eXnX~pBXIbUFJKyLrxf5s4LskL-I~HGIJMMd555CQkLlJ39wXya8BcHGs5ZVoBOQ3aPBxNz9W2Iw4t52juq22XJ9ihyroO2XVwoDrO1IQXnKqkfT5UpYZD6N9sxGKGw6xglk6MVH8w0OgCP6rB~6bBf6ghHcA__&Key-Pair-Id=KL5I0C8H7HX83';
       const readyPlayerMeUrl = replicateRes.data['glbUrl'];
       const proxyUrl = `/api/meshygltf?url=${encodeURIComponent(readyPlayerMeUrl)}`;
       setModelUrl(proxyUrl);
@@ -105,7 +99,7 @@ export default function UploadFantasyPhoto() {
     const loader = new GLTFLoader();
     loader.load(modelUrl, (gltf) => {
       const model = gltf.scene;
-      model.position.y = -1;
+      model.position.y = 0.;
       model.traverse((child) => {
         if (child.isMesh) {
           child.castShadow = true;
