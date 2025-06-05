@@ -48,7 +48,7 @@ export async function POST(req) {
       },
       body: JSON.stringify({
         input: {
-          prompt: "A full-body cartoon illustration of in studio jibri and Pixar style, front-facing, clean silhouette, flat colors, simplified clothes, natural lighting, no background, high contrast",
+          prompt: "A full-body cartoon illustration in looney tunes style with big but proper eye size, best form for 3d rendering, front-facing, clean silhouette, flat colors, simplified clothes, natural lighting, no background, high contrast",
           input_image: `data:image/png;base64,${removedBgImageBase64}`
         }
       })
